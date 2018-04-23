@@ -1,0 +1,272 @@
+---
+title: "Project_Script"
+author: "Sarah Kell"
+date: "March 8, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(vegan)  #install packages and load in libraries 
+library(dummies)
+library(car)
+library(dplyr)
+library(PMCMR)
+```
+'Fake' Data generated for tidal creek (water and sediment) total microplastic abundances is based upon average concentrations found in the rivers (Ashley, Cooper and Wando) feeding into Charleston Harbor.  Sediment data generated for stormwater ponds is based upon preliminary data (max concentrations) for bottom and edge sediment; water sample data is based upon river data (no prelim data for water in ponds)
+
+Used rnorm to generate data - then manipulated data in Excel to fit expected decrease in microplastic concentrations as you move downstream from the discharge point. 
+
+#Rnorm -Draws random values from a theoretical normal distribution.
+#ex: rnorm(n = 10, mean = 100, sd = 5)
+
+Stormwater Ponds (SW ponds)
+Bottom Sediment
+```{r}
+pond.bottom <- rnorm(10, mean = 21700, sd = 200)
+pond.bottom
+```
+Pond Edge Sediment 
+```{r}
+pond.edge <- rnorm(10, mean = 62300, sd = 250)
+pond.edge
+```
+Pond Water
+```{r}
+pond.water <- rnorm(10, mean = 30, sd = 15)
+pond.water
+```
+
+Tidal Creeks 
+Subtidal Sediment
+```{r}
+subtidal <- rnorm(40, mean = 3200, sd = 150)
+subtidal
+```
+Intertidal Sediment
+```{r}
+intertidal <- rnorm(40, mean = 222, sd = 100)
+intertidal
+```
+Water
+```{r}
+water <- rnorm(40, mean = 20, sd = 5)
+water
+```
+
+Reading in and reorganizing data 
+```{r}
+SWponds<-read.csv("SWponds.csv")
+unique(SWponds$site.ID)
+SWponds <- data.frame(SWponds[1:150, ]) #removed empty rows 
+tail(SWponds)
+as.character(levels(SWponds$site.ID))
+SWponds$site.ID <- factor(SWponds$site.ID, levels = c("RW Up 50","SW pond","RW Discharge Pt","RW Down 50", "RW Down 100")) #rearranging order of site IDs
+```
+
+Analysis- 1-way ANOVA - testing whether there is a difference in microplastic (MP) abundances between locations
+H0: Total microplastic abundances between locations are equal 
+
+Model 1: SeaSurface Microlayer
+ 
+Result:  There is a significant difference in the mean concentration of MP particles between locations (f= 7.022, p=5.22e-06) 
+```{r}
+boxplot(total.plastic.liter ~ location, data = SWponds)
+Water <- aov(total.plastic.liter ~ location, data = SWponds)
+summary(Water)
+plot(resid(Water)~fitted(Water))#residuals not normal, variances unequal  
+logwater <- aov(log(total.plastic.liter) ~ location, data = SWponds)
+summary(logwater)
+plot(logwater) #tired to log and log1p transform data - did not improve 
+```
+
+Testing for homogeneity of variance across groups using Levene's Test (more robust to departures from normality than Bartlett's)
+Null hypo - population variances are equal
+
+Results: Reject null, confirmed variances are unequal (p= 0.004141)
+```{r}
+leveneTest(total.plastic.liter~location, data=SWponds, center=median)
+```
+
+Testing for normality using the Shapiro-Wilk test
+Result: Confirmed data is not normally distributed  
+```{r}
+shapiro.test(SWponds$total.plastic.liter)
+TPL <- SWponds$total.plastic.liter
+histogram(TPL, breaks=10, col="lightblue", xlab= "Total Plastic/Liter")
+```
+
+Will use Non-Parametric Test going forward - KRUSKAL-WALLACE
+
+chi-square (H)- rough est. of how different groups are from each other 
+larger the H- more different groups are, smaller the H - more similar groups are 
+*p-val most important
+
+Results: There is a significant difference in the mean concentration of MP particles in the seasurface microlayer between sampling locations (X2 = 21.55, p=0.01042)
+```{r}
+location <- as.factor(location)
+water2 <- kruskal.test(total.plastic.liter ~ location, data = SWponds)
+water2 
+boxplot(total.plastic.liter ~ location, data = SWponds)
+```
+
+Ponds vs. receiving waters - Significant difference in MP concentrations between SW ponds and receiving waterbodies (RW) (x2 = 21.565, p = 2.076e-05)
+```{r}
+water3 <- kruskal.test(total.plastic.liter ~ site.ID, data = SWponds)
+water3
+boxplot(total.plastic.liter ~ site.ID, data = SWponds, ylab = "Microplastic Particles/liter", xlab = "Location", col = c("lightblue1", "cyan2", "steelblue", "lightblue2","azure"))
+```
+
+PostHOC - Dunn's test of multiple comparisons with Bonferroni correction 
+
+Results: significant differences between SW ponds and RW up 50, RW down 50 and RW down 100.  No difference between SW ponds and discharge pt.
+Results suggest that stormwater ponds are an important pathway for microplastics to adjacent waterways.  
+```{r}
+posthoc.kruskal.dunn.test(total.plastic.liter ~ site.ID, data = SWponds, p.adjust = "bonf")
+```
+
+
+Model 2: Intertidal/SW Pond Edge Sediment- KRUSKAL-WALLACE 
+
+Results: There is a significant difference in mean concentrations of microplastic particles in the intertidal/edge sediment between locations (X2 = 25.389, p-value = 0.002569)
+```{r}
+IE <- kruskal.test(total.plastic.liter ~ location, data = SWponds)
+IE
+boxplot(total.plastic.per.m2 ~ location, data = SWponds)
+```
+
+And a significant difference between SW ponds and Receiving Waters (RW)
+(X2= 43.054, p= 1.008e-08)
+```{r}
+IE2 <- kruskal.test(total.plastic.per.m2 ~ site.ID, data = SWponds)
+IE2
+boxplot(total.plastic.per.m2 ~ site.ID, data = SWponds, ylab = "Microplastic Particles/m2", xlab = "Location", col = c("lightblue1", "cyan2", "steelblue", "lightblue2","azure"))
+```
+
+PostHOC - Dunn's test of multiple comparisons with Bonferroni correction 
+
+Results: Results: significant differences between SW ponds and RW up 50, RW down 50 and RW down 100.  No difference between SW ponds and discharge pt.
+```{r}
+posthoc.kruskal.dunn.test(total.plastic.per.m2 ~ site.ID, data = SWponds, p.adjust = "bonf")
+```
+
+
+Model 3: Subtidal/Pond Bottom Sediment - KRUSKAL WALLACE 
+
+Results: Significant difference in MP particle concentrations in subtidal/bottom sediments between locations (x2= 25.349, p= 0.002609)  
+```{r}
+SB <- kruskal.test(total.plastic.per.kg.ww ~ location, data = SWponds)
+SB
+boxplot(total.plastic.per.kg.ww ~ location, data = SWponds)
+```
+
+And a significant difference between SW ponds and Receiving Waters (RW)
+(X2= 40.419, p= 3.545e-08)
+```{r}
+SB2 <- kruskal.test(total.plastic.per.kg.ww ~ site.ID, data = SWponds)
+SB2
+boxplot(total.plastic.per.kg.ww ~ site.ID, data = SWponds, ylab = "Microplastic Particles/kg ww", xlab = "Location", col = c("lightblue1", "cyan2", "steelblue", "lightblue2","azure"))
+```
+ 
+PostHOC - Dunn's test of multiple comparisons with Bonferroni correction 
+
+Results: significant differences between SW ponds and RW up 50, RW down 50 and RW down 100.  No difference between SW ponds and discharge pt. 
+```{r}
+posthoc.kruskal.dunn.test(total.plastic.per.kg.ww ~ site.ID, data = SWponds, p.adjust = "bonf")
+```
+
+
+REGRESSION ANALYSIS- Do MP concentrations decrease with increasing distance from SW ponds? 
+  Removed the -50 m (upstream from SW ponds) data points since question is looking for 
+  relationship between SW ponds and downstream MP concentrations 
+```{r}
+newSWponds <- filter(SWponds, SWponds$distance.m > -50.00) 
+```
+
+SeaSurface Microlayer Results (linear relationship): Significant decrease in MP concentrations as you move downstream from SW ponds (Adj R2 = 0.6255)
+```{r}
+waterlm <- lm(total.plastic.liter ~ distance.m, data = newSWponds)
+summary(waterlm)
+co <- coef(waterlm) #summary also shows these numbers 
+plot(total.plastic.liter ~ distance.m, data = newSWponds, ylab = "Microplastic Particles/Liter", xlab = "Distance (m)")
+abline(co, col = "blue", lwd=1)
+```
+
+Checking to see if data fits exponential model better.
+Results: better fit, 78% of variance explained (Adj R2 = 0.7768)
+```{r}
+waterlm.expo <- lm(log(total.plastic.liter) ~ distance.m, data=newSWponds)
+summary(waterlm.expo)
+e.co <- (coef(waterlm.expo))
+plot(total.plastic.liter ~ distance.m, data = newSWponds, ylab = "Microplastic Particles/Liter", xlab = "Distance (m)")
+x = 0:150
+lines(x, exp(waterlm.expo$coef[1] + x * waterlm.expo$coef[2]), col = "blue")
+```
+
+
+REGRESSION 
+Intertidal/SW Pond Edge Sediment Results: Decrease in MP abundance with distance 
+Linear: (Adj R2 = 0.3832)
+```{r}
+IElm <- lm(total.plastic.per.m2 ~ distance.m, data = newSWponds)
+summary(IElm)
+plot(total.plastic.per.m2 ~ distance.m, data = newSWponds, ylab = "Microplastic Particles/m2", xlab = "Distance (m)")
+abline(c(34241.61, -342.97),col = "blue", lwd=1) 
+```
+
+Expo: (Adj R2 = 0.5046)
+```{r}
+IElm.expo <- lm(log(total.plastic.per.m2) ~ distance.m, data = newSWponds)
+summary(IElm.expo)
+plot(total.plastic.per.m2 ~ distance.m, data = newSWponds, ylab = "(Log)Microplastic Particles/m2", xlab = "Distance (m)")
+x = 0:150
+lines(x, exp(IElm.expo$coef[1] + x * IElm.expo$coef[2]), col = "blue")
+```
+
+
+REGRESSION 
+Subtidal/Pond Bottom Sediment  Results: Decrease in MP abundance with distance 
+Linear: (Adj R2 =  0.3949)
+```{r}
+SBlm <- lm(total.plastic.per.kg.ww ~ distance.m, data = newSWponds)
+summary(SBlm)
+plot(total.plastic.per.kg.ww ~ distance.m, data = newSWponds, ylab = "Microplastic Particles/kg ww", xlab = "Distance (m)")
+abline(c(13425.17, -103.63),col = "blue", lwd=1)  
+```
+
+Expo: (Adj R2 = 0.423)
+```{r}
+SBlm.expo <- lm(log(total.plastic.per.kg.ww) ~ distance.m, data = newSWponds)
+summary(SBlm.expo)
+plot(log(total.plastic.per.kg.ww) ~ distance.m, data = newSWponds, ylab = "(Log) Microplastic Particles/kg ww", xlab = "Distance (m)") 
+x = 0:170
+lines(x, exp(SBlm.expo$coef[1] + x * SBlm.expo$coef[2]), col = "blue") #expo line not showing
+```
+
+
+PEARSON PRODUCT MOMENT CORRELATION - between MP abundance and distance downstream from SW ponds 
+
+gives Rho values- lays between -1 and 1, positive and negative correlation and how tight the correlation is. no correlation is 0
+*Report: p-val, cor & 95% conf interval around Rho
+
+SeaSurface Microlayer Results: Negative correlation (p=7.656e-10, corr= -0.7969059, 95% C.I = -0.8879799, -0.6456833)
+```{r}
+WaterCorr <- cor.test(newSWponds$total.plastic.liter, newSWponds$distance.m, method = "pearson")
+WaterCorr
+```
+
+Intertidal/SW Pond Edge Sediment Results: Negative correlation between abundances and distance (p=1.236e-05, corr= -0.6316851 , 95% C.I = -0.7881129, -0.3986132)
+```{r}
+IECorr <- cor.test(newSWponds$total.plastic.per.m2, newSWponds$distance.m, method = "pearson")
+IECorr
+```
+
+Subtidal/Pond Bottom Sediment Results: Negative correlation between abundances and distance (p=8.491e-06, corr= -0.640612, 95% C.I = -0.7937277, -0.4111504)
+```{r}
+SBCorr <- cor.test(newSWponds$total.plastic.per.kg.ww, newSWponds$distance.m, method = "pearson")
+SBCorr
+```
+
