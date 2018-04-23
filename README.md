@@ -13,9 +13,10 @@ In R: install vegan, dummies, car, dplyr and PMCMR packages if needed and load i
 
 Abbrevations/Descriptions
 SWponds = stormwater ponds
-RW- Receiving waterbodies 
-RW Up 50- Receiving waterbody sampled 50 meters upstream from discharge pt
-RW Down 50 - Receiving waterbody sampled 50 meters downstream from discharge pt
-RW Down 100 - Receiving waterbody sampled 100 meters upstream from discharge pt
+RW = Receiving waterbodies 
+RW Up 50 = Receiving waterbody sampled 50 meters upstream from discharge pt
+RW Down 50 = Receiving waterbody sampled 50 meters downstream from discharge pt
+RW Down 100 = Receiving waterbody sampled 100 meters upstream from discharge pt\
+Dicharge Pt = point where outflow from stormwater pond meets the tidal waterbody
 
 
