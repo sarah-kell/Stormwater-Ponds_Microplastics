@@ -12,11 +12,11 @@ R code can be found in the Script.Rmd file.  Data that was generated and manipul
 In R: install vegan, dummies, car, dplyr and PMCMR packages if needed and load in libraries.  The R markdown file walks you though each analysis step by step with results noted.   
 
 Abbrevations/Descriptions
-SWponds = stormwater ponds
-RW = Receiving waterbodies 
-RW Up 50 = Receiving waterbody sampled 50 meters upstream from discharge pt
-RW Down 50 = Receiving waterbody sampled 50 meters downstream from discharge pt
-RW Down 100 = Receiving waterbody sampled 100 meters upstream from discharge pt\
+SWponds = stormwater ponds;
+RW = Receiving waterbodies; 
+RW Up 50 = Receiving waterbody sampled 50 meters upstream from discharge pt;
+RW Down 50 = Receiving waterbody sampled 50 meters downstream from discharge pt;
+RW Down 100 = Receiving waterbody sampled 100 meters upstream from discharge pt;
 Dicharge Pt = point where outflow from stormwater pond meets the tidal waterbody
 
 
